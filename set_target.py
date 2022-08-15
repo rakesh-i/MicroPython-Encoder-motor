@@ -2,8 +2,8 @@ from machine import Pin
 import time
 import motor
 
-p1 = Pin(27, Pin.IN)
-p2 = Pin(26, Pin.IN)
+p1 = Pin(27, Pin.IN) //enabel pin C1 (interchange the pins if the values are in reverse)
+p2 = Pin(26, Pin.IN) //enable pin C2
 
 target = 10000          #Target position of encoder
 speed = 500         
