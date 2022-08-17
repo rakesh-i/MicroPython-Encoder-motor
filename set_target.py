@@ -51,7 +51,7 @@ py.irq(trigger=Pin.IRQ_RISING, handler=handle_interrupt)
 
 p1 = PID(3,.1,0.001,1000) # set pid values PID(Propotional, derivative, integral, max correction speed)
 
-def target(t):
+def set(t):
     global prevT
     global py
     currT = ticks_us()
