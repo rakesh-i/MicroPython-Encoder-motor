@@ -1,56 +1,68 @@
+from time import sleep, ticks_ms, sleep_ms, ticks_us, ticks_diff
 from machine import Pin
-import time
 import motor
+prevT = 0
+px = Pin(14, Pin.IN)
+py = Pin(27, Pin.IN)
 
-p2 = Pin(14, Pin.IN)
-p1 = Pin(27, Pin.IN)
-
-max_correction = 1000    #Maximum correction speed of the motor 
+max_correction = 1000    #Maximum speed of the motor 
 pos = 0
 
 def convert(x, i_m, i_M, o_m, o_M):
     return max(min(o_M, (x - i_m) * (o_M - o_m) // (i_M - i_m) + o_m), o_m)
 
-def correction(revolutions):
-    if revolutions > 0:
-        if revolutions > max_correction:
-            revolutions = max_correction
-        else:
-            revolutions = revolutions
-    else:
-        if revolutions < -max_correction:
-            revolutions = -max_correction
-        else:
-            revolutions = revolutions 
-    return revolutions
+class PID:
+    def __init__(self, kpIn, kdIn, kiIn, umaxIn, eprev=0, eintegral=0):
+        self.kpIn = kpIn
+        self.kdIN = kdIn
+        self.kiIn = kiIn
+        self.umaxIn  =umaxIn
+        self.eprev = eprev
+        self.eintegral = eintegral
 
+    def evalu(self,value, target, deltaT):
+        e = target-value
+        dedt = (e-self.eprev)/(deltaT)
+        self.eintegral = self.eintegral + e*deltaT
+        u = self.kpIn*e + self.kdIN*dedt + self.kiIn*self.eintegral
+        if u > 0:
+            if u > self.umaxIn:
+                u = self.umaxIn
+            else:
+                u = u
+        else:
+            if u < -self.umaxIn:
+                u = -self.umaxIn
+            else:
+                u = u 
+        return u
+    
 #Swap encoder pins if pos(position counter) value doesn't reduce when we reverse the direction of motor.
 def handle_interrupt(pin):
     global pos
-    a = p2.value()
+    a = px.value()
     if a > 0:
         pos = pos+1
     else:
         pos = pos-1
 
 #interrpt handler(triggers interrupt when encoder 1 on Pin 27 goes high)
-p1.irq(trigger=Pin.IRQ_RISING, handler=handle_interrupt) 
+py.irq(trigger=Pin.IRQ_RISING, handler=handle_interrupt) 
 
-def target(set):
-	last_pos = 0
-	speed = 500         
-	w = 0
-	KP = 1
-	KD = .1
-	KI = .00005
-	while(1):
-	    propotional = set- pos
-	    derivative = set - last_pos
-	    integral = set +last_pos
-	    rotate = (propotional*KP + derivative*KD + integral*KI)
-	    r = int(correction(rotate)) #Motor output speed(0-1000)
-	    motor.motorSpeed(r) 
-	    last_pos = pos              #current positon of the encoder.
-	    print(pos, r)
-	    
-	    time.sleep(.1) #Add atleast .01sec delay for stable terminal
+p1 = PID(3,.1,0.001,1000) # set pid values PID(Propotional, derivative, integral, max correction speed)
+
+def target(t):
+    global prevT
+    global py
+    currT = ticks_us()
+    deltaT = (currT - prevT)/(1000000)
+    prevT = currT
+    while(1):
+        x = int(p1.evalu(pos, t, deltaT))
+        motor.motorSpeed(x)
+        print(pos, x)
+        sleep_ms(10)
+
+
+    
+
