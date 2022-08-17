@@ -1,11 +1,10 @@
 from time import sleep, ticks_ms, sleep_ms, ticks_us, ticks_diff
 from machine import Pin
 import motor
-prevT = 0
-px = Pin(14, Pin.IN)
-py = Pin(27, Pin.IN)
 
-max_correction = 1000    #Maximum speed of the motor 
+prevT = 0
+px = Pin(14, Pin.IN)  #encoder pin1 (C1)
+py = Pin(27, Pin.IN)  #encoder pin2 (C2)
 pos = 0
 
 def convert(x, i_m, i_M, o_m, o_M):
