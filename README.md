@@ -5,6 +5,6 @@ Copy both motor.py and set_target.py to a ESP32 with MicroPython.
 
 Usage
 ```
-from set_target import target
-target(10000)
+from set_target import set
+set(10000)
 ```
