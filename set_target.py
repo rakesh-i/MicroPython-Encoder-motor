@@ -60,7 +60,7 @@ def set(t):
     while(1):
         x = int(p1.evalu(pos, t, deltaT))
         motor.motorSpeed(x)
-        print(pos, x)
+        print(pos, t)  # print curr positon and target point
         sleep_ms(10)
 
 
