@@ -1,14 +1,15 @@
 from time import sleep, ticks_ms, sleep_ms, ticks_us, ticks_diff
 from machine import Pin
 import motor
-
 prevT = 0
-px = Pin(14, Pin.IN)  #encoder pin1 (C1)
-py = Pin(27, Pin.IN)  #encoder pin2 (C2)
+px = Pin(14, Pin.IN)
+py = Pin(27, Pin.IN)
+
 pos = 0
 
 def convert(x, i_m, i_M, o_m, o_M):
     return max(min(o_M, (x - i_m) * (o_M - o_m) // (i_M - i_m) + o_m), o_m)
+
 
 class PID:
     def __init__(self, kpIn, kdIn, kiIn, umaxIn, eprev=0, eintegral=0):
@@ -48,19 +49,22 @@ def handle_interrupt(pin):
 #interrpt handler(triggers interrupt when encoder 1 on Pin 27 goes high)
 py.irq(trigger=Pin.IRQ_RISING, handler=handle_interrupt) 
 
-p1 = PID(3,.1,0.001,1000) # set pid values PID(Propotional, derivative, integral, max correction speed)
+p1 = PID(3,.1,0.001,800) # set pid values PID(Propotional, derivative, integral, max correction speed)
 
 def set(t):
+    global pos
     global prevT
     global py
-    currT = ticks_us()
-    deltaT = (currT - prevT)/(1000000)
-    prevT = currT
     while(1):
-        x = int(p1.evalu(pos, t, deltaT))
+        currT = ticks_us()
+        deltaT = (currT - prevT)/(1000000)
+        prevT = currT
+        step = pos
+        x = int(p1.evalu(step, t, deltaT))
         motor.motorSpeed(x)
-        print(pos, t)  # print curr positon and target point
-        sleep_ms(50)
+        print(step, t)
+        sleep_ms(10)
+        
 
 
     
