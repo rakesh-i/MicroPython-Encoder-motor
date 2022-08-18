@@ -2,6 +2,7 @@ from time import sleep, ticks_ms, sleep_ms, ticks_us, ticks_diff
 from machine import Pin
 import motor
 prevT = 0
+#encoder pins C1 and C2
 px = Pin(14, Pin.IN)
 py = Pin(27, Pin.IN)
 
