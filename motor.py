@@ -3,8 +3,8 @@ from machine import Pin, PWM
 import time
 
 #pin definition
-p1 = machine.Pin(13, machine.Pin.OUT) // output 1
-p2 = machine.Pin(12, machine.Pin.OUT) // output 2
+p1 = machine.Pin(13, machine.Pin.OUT) # output 1
+p2 = machine.Pin(12, machine.Pin.OUT) # output 2
 p3 = machine.Pin(14) //PWM pin for speed control
 pwm = machine.PWM(p3, freq=50)
 
