@@ -26,7 +26,7 @@ while(1):
   p.setSpeed(100,m)             # setSpeed(Speed in RPM, Motor object)
   #p.setSpeed(-100,m)           # For reverse direction
 ```
-#### Note: Swap the C1 and C2 pins if encoder counts in only one direction
+
 ### Closed loop position control
 ```
 from encoder_N20_esp import Motor, PID
@@ -36,5 +36,8 @@ while(1):
   p.setTarget(1000, m)          # setTarget(Number of encoder ticks, Motor object)
 ```
 Check the multi_motor.py for multiple motor contorl.
+#### Note1: Swap the C1 and C2 pins if encoder counts in only one direction
+#### Note2: To stop the motor set the motor speed to 0 by using "m.speed(0)" line.
+#### Note3: When you exit the loop, remember to set the motor speed to 0 just after the exit.
 
 [wire]: media/wire.png
