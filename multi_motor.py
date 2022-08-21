@@ -1,4 +1,4 @@
-from encoder_N20_esp.py import PID, Motor
+from encoder_N20_esp import PID, Motor
 
 # Creating objects of each motor
 m1 = Motor(21, 22, 23, 16, 4)
