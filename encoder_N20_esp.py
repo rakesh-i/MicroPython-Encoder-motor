@@ -131,7 +131,7 @@ class PID:
         
         # Set the speed 
         M.speed(x)
-        #print(step, target) # For debugging
+        print(step, target) # For debugging
         
         # Constant delay 
         sleep_ms(10)
@@ -163,7 +163,7 @@ class PID:
 
         # Set the motor speed
         M.speed(x)
-        #print(v, deltaT)   # For debugging
+        print(v, vt)   # For debugging
 
         # Constant delay
         sleep_ms(50)
