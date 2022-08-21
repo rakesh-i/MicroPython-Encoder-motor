@@ -29,7 +29,7 @@ from machine import Pin, PWM, disable_irq, enable_irq
 # A class for functions related to motors
 class Motor:
     
-    # Global position varible for encoder counts
+    # Instance variable for keeping the record of the encoder position
     pos = 0
 
     # Interrupt handler
@@ -69,8 +69,7 @@ class Motor:
 # A class for closed loop speed and postion control
 class PID:
     
-    # Global variable for this class
-    prevT = 0
+    # Instance variable for this class
     posPrev = 0
 
     # Constructor for initializing PID values
