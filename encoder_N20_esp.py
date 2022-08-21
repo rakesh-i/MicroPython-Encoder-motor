@@ -29,7 +29,7 @@ from machine import Pin, PWM, disable_irq, enable_irq
 # A class for functions related to motors
 class Motor:
     
-    # Instance variable for keeping the record of the encoder position
+    # Global position varible for encoder counts
     pos = 0
 
     # Interrupt handler
@@ -69,14 +69,16 @@ class Motor:
 # A class for closed loop speed and postion control
 class PID:
     
-    # instance variable
+    # Global variable for this class
+    prevT = 0
     posPrev = 0
 
     # Constructor for initializing PID values
-    def __init__(self, kp=1, kd=0, ki=0, umaxIn=800, eprev=0, eintegral=0):
+    def __init__(self, M, kp=1, kd=0, ki=0, umaxIn=800, eprev=0, eintegral=0):
         self.kp = kp
         self.kd = kd
         self.ki = ki
+        self.M = M                   # Motor object
         self.umaxIn  =umaxIn
         self.eprev = eprev
         self.eintegral = eintegral
@@ -111,7 +113,7 @@ class PID:
         return u
     
     # Function for closed loop position control
-    def setTarget(self,target,M):
+    def setTarget(self,target):
         
         # Time delta is predefined as we have set a constat time for the loop.(Initial dealy is 
         # very high,interfers with response time)(Integral part becomes very high due to huge deltaT value at the beginning)
@@ -120,7 +122,7 @@ class PID:
 
         # Disable the interrupt to read the position of the encoder(encoder tick)               
         state = disable_irq()
-        step = M.pos
+        step = self.M.pos
 
         # Enable the intrrupt after reading the position value
         enable_irq(state)
@@ -129,16 +131,16 @@ class PID:
         x = int(self.evalu(step, target, deltaT))
         
         # Set the speed 
-        M.speed(x)
+        self.M.speed(x)
         print(step, target) # For debugging
         
         # Constant delay 
         sleep_ms(10)
         
     # Function for closed loop speed control
-    def setSpeed(self, target, M):
+    def setSpeed(self, target):
         state = disable_irq()
-        posi = M.pos
+        posi = self.M.pos
         enable_irq(state)
 
         # Delta is high because small delta causes drastic speed stepping.
@@ -161,7 +163,7 @@ class PID:
         x = int(self.evalu(v, vt, deltaT))
 
         # Set the motor speed
-        M.speed(x)
+        self.M.speed(x)
         print(v, vt)   # For debugging
 
         # Constant delay
