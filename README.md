@@ -31,7 +31,7 @@ while(1):
 ```
 from encoder_N20_esp import Motor, PID
 m = Motor(21, 22, 23, 16, 4)
-p = PID(3, 0, 10, 800)
+p = PID(3, 0.1, .001, 800)
 while(1):
   p.setTarget(1000, m)  # setTarget(Number of encoder ticks, Motor object)
 ```
