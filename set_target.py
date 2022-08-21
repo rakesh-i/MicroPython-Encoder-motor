@@ -1,31 +1,78 @@
-from time import sleep, ticks_ms, sleep_ms, ticks_us, ticks_diff
-from machine import Pin
-import motor
-prevT = 0
-#encoder pins C1 and C2
-px = Pin(14, Pin.IN)
-py = Pin(27, Pin.IN)
+from time import sleep_ms, ticks_us
+from machine import Pin, PWM, disable_irq, enable_irq
 
-pos = 0
+# A class for functions related to motors
+class Motor:
+    
+    # Global position varible for encoder counts
+    pos = 0
 
-def convert(x, i_m, i_M, o_m, o_M):
-    return max(min(o_M, (x - i_m) * (o_M - o_m) // (i_M - i_m) + o_m), o_m)
+    # Interrupt handler
+    def handle_interrupt(self,pin):
+        a = self.px.value()
+        if a > 0:
+            self.pos = self.pos+1
+        else:
+            self.pos = self.pos-1
+    
+    # Constroctor for initializing the motor pins
+    def __init__(self,m1, m2, en, c1, c2, freq=50):
+        self.px = Pin(c1, Pin.IN)
+        self.py = Pin(c2, Pin.IN)
+        self.freq = freq
+        self.p_in1 = Pin(m1, Pin.OUT)
+        self.p_in2 = Pin(m2, Pin.OUT)
+        self.p_en = PWM(Pin(en,Pin.OUT), freq)
+        # Interrupt initialization
+        self.py.irq(trigger=Pin.IRQ_RISING, handler=self.handle_interrupt)
+    
+    # Arduino's map() function implementation in python 
+    def convert(self, x, i_m, i_M, o_m, o_M):
+        return max(min(o_M, (x - i_m) * (o_M - o_m) // (i_M - i_m) + o_m), o_m)
 
+    # A function for speed control without feedback(Open loop speed control)
+    def speed(self,M):
+        pwm = self.convert(abs(M),0, 1000, 0, 1000) 
+        self.p_en.duty(pwm)
+        if M>0:
+            self.p_in1(1)
+            self.p_in2(0)
+        else:
+            self.p_in1(0)
+            self.p_in2(1)
 
+# A class for closed loop speed and postion control
 class PID:
-    def __init__(self, kpIn, kdIn, kiIn, umaxIn, eprev=0, eintegral=0):
-        self.kpIn = kpIn
-        self.kdIN = kdIn
-        self.kiIn = kiIn
+    
+    # Global variable for this class
+    prevT = 0
+    posPrev = 0
+
+    # Constructor for initializing PID values
+    def __init__(self, kp=1, kd=0, ki=0, umaxIn=800, eprev=0, eintegral=0):
+        self.kp = kp
+        self.kd = kd
+        self.ki = ki
         self.umaxIn  =umaxIn
         self.eprev = eprev
         self.eintegral = eintegral
 
+    # Function for calculating the Feedback signal. It takes the current value, user target value and the time delta.
     def evalu(self,value, target, deltaT):
-        e = target-value
+        
+        # Propotional
+        e = target-value 
+
+        # Derivative
         dedt = (e-self.eprev)/(deltaT)
+
+        # Integral
         self.eintegral = self.eintegral + e*deltaT
-        u = self.kpIn*e + self.kdIN*dedt + self.kiIn*self.eintegral
+        
+        # Control signal
+        u = self.kp*e + self.kd*dedt + self.ki*self.eintegral
+        
+        # Direction and power of  the control signal
         if u > 0:
             if u > self.umaxIn:
                 u = self.umaxIn
@@ -36,37 +83,64 @@ class PID:
                 u = -self.umaxIn
             else:
                 u = u 
+        self.eprev = e
         return u
     
-#Swap encoder pins if pos(position counter) value doesn't reduce when we reverse the direction of motor.
-def handle_interrupt(pin):
-    global pos
-    a = px.value()
-    if a > 0:
-        pos = pos+1
-    else:
-        pos = pos-1
+    # Function for closed loop position control
+    def setTarget(self,target,M):
+        
+        # Time delta is predefined as we have set a constat time for the loop.(Initial dealy is 
+        # very high,interfers with response time)(Integral part becomes very high due to huge deltaT value at the beginning)
+        # Use tick_us() to calculate the delay manually(remove slee_ms() if you use realtime delay)
+        deltaT = .01
 
-#interrpt handler(triggers interrupt when encoder 1 on Pin 27 goes high)
-py.irq(trigger=Pin.IRQ_RISING, handler=handle_interrupt) 
+        # Disable the interrupt to read the position of the encoder(encoder tick)               
+        state = disable_irq()
+        step = M.pos
 
-p1 = PID(3,.1,0.001,800) # set pid values PID(Propotional, derivative, integral, max correction speed)
+        # Enable the intrrupt after reading the position value
+        enable_irq(state)
 
-def set(t):
-    global pos
-    global prevT
-    global py
-    while(1):
-        currT = ticks_us()
-        deltaT = (currT - prevT)/(1000000)
-        prevT = currT
-        step = pos
-        x = int(p1.evalu(step, t, deltaT))
-        motor.motorSpeed(x)
-        print(step, t)
+        # Control signal call
+        x = int(self.evalu(step, target, deltaT))
+        
+        # Set the speed 
+        M.speed(x)
+        #print(step, target) # For debugging
+        
+        # Constant delay 
         sleep_ms(10)
         
+    # Function for closed loop speed control
+    def setSpeed(self, target, M):
+        state = disable_irq()
+        posi = M.pos
+        enable_irq(state)
 
+        # Delta is high because small delta causes drastic speed stepping.
+        deltaT = .05
+
+        # Target RPM
+        vt = target 
+
+        # Current encoder tick rate
+        velocity = (posi - self.posPrev)/deltaT
+        self.posPrev = posi
+
+        # Converted to RPM
+        # 350 ticks per revolution of output shaft of the motor 
+        # For different gearing differnt values
+        # Run the function without setting the motor speed and calculate the ticks per revolution by manually rotaing the motor  
+        v = velocity/350*60
+
+        # Call for control signal
+        x = int(self.evalu(v, vt, deltaT))
+
+        # Set the motor speed
+        M.speed(x)
+        #print(v, deltaT)   # For debugging
+
+        # Constant delay
+        sleep_ms(50)
 
     
-
