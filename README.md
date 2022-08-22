@@ -39,6 +39,6 @@ Check the multi_motor.py for multiple motor contorl.
 #### Note1: Swap the C1 and C2 pins if encoder counts in only one direction
 #### Note2: To stop the motor set the motor speed to 0 by using "m.speed(0)" line.
 #### Note3: When you exit the loop, remember to set the motor speed to 0 just after the exit.
-#### Note4: Time delta is pre defined in the setTarget and setSpeed methods due to a bug in MicorPython. You can see the source code on how to overide it. (Do at you own will, results may vary)
+#### Note4: Time delta is pre defined in the setTarget and setSpeed methods due to a bug in MicroPython. You can see the source code on how to overide it. (Do at you own will, results may vary)
 
 [wire]: media/wire.png
