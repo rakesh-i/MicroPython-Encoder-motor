@@ -33,7 +33,7 @@ from encoder_N20_esp import Motor, PID
 m = Motor(21, 22, 23, 16, 4)
 p = PID(m, 5, 0.1, .001, 800)      # Tested Pid values for 12v 500rpm N20 motor
 while(1):
-  p.setTarget(1000)          # setTarget(Number of encoder ticks, Motor object)
+  p.setTarget(1000)          # setTarget(Number of encoder ticks)
 ```
 Check the multi_motor.py for multiple motor contorl.
 #### Note1: Swap the C1 and C2 pins if encoder counts in only one direction
