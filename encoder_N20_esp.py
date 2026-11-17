@@ -28,28 +28,27 @@ from machine import Pin, PWM, disable_irq, enable_irq
 
 # A class for functions related to motors
 class Motor:
-    
-    # Instance variable for keeping the record of the encoder position
-    pos = 0
 
-    # Interrupt handler
-    def handle_interrupt(self,pin):
-        a = self.px.value()
-        if a > 0:
-            self.pos = self.pos+1
-        else:
-            self.pos = self.pos-1
-    
     # Constroctor for initializing the motor pins
     def __init__(self,m1, m2, en, c1, c2, freq=50):
+        self.pos = 0
         self.px = Pin(c1, Pin.IN)
         self.py = Pin(c2, Pin.IN)
         self.freq = freq
         self.p_in1 = Pin(m1, Pin.OUT)
         self.p_in2 = Pin(m2, Pin.OUT)
         self.p_en = PWM(Pin(en,Pin.OUT), freq)
+
         # Interrupt initialization
         self.py.irq(trigger=Pin.IRQ_RISING, handler=self.handle_interrupt)
+    
+    # Interrupt handler
+    def handle_interrupt(self, pin):
+        a = self.px.value()
+        if a > 0:
+            self.pos = self.pos+1
+        else:
+            self.pos = self.pos-1
     
     # Arduino's map() function implementation in python 
     def convert(self, x, i_m, i_M, o_m, o_M):
@@ -59,21 +58,23 @@ class Motor:
     def speed(self,M):
         pwm = self.convert(abs(M),0, 1000, 0, 1000) 
         self.p_en.duty(pwm)
-        if M>0:
+
+        if M > 0:
             self.p_in1(1)
             self.p_in2(0)
-        else:
+        elif M < 0:
             self.p_in1(0)
             self.p_in2(1)
+        else:
+            self.p_in1(0)
+            self.p_in2(0)
 
 # A class for closed loop speed and postion control
 class PID:
-    
-    # Instance variable for this class
-    posPrev = 0
 
     # Constructor for initializing PID values
     def __init__(self, M, kp=1, kd=0, ki=0, umaxIn=800, eprev=0, eintegral=0):
+        self.prevPos = 0
         self.kp = kp
         self.kd = kd
         self.ki = ki
@@ -81,6 +82,15 @@ class PID:
         self.umaxIn  =umaxIn
         self.eprev = eprev
         self.eintegral = eintegral
+        self.posInitialized = False
+        self.errorInitialized = False
+
+    # Reset PID state
+    def reset(self):
+        self.eprev = 0
+        self.eintegral = 0
+        self.posInitialized = False
+        self.errorInitialized = False
 
     # Function for calculating the Feedback signal. It takes the current value, user target value and the time delta.
     def evalu(self,value, target, deltaT):
@@ -88,11 +98,20 @@ class PID:
         # Propotional
         e = target-value 
 
+        if not self.errorInitialized:
+            self.eprev = e
+            self.errorInitialized = True
+
         # Derivative
         dedt = (e-self.eprev)/(deltaT)
 
         # Integral
-        self.eintegral = self.eintegral + e*deltaT
+        self.eintegral += e * deltaT
+
+        # Anti-windup: cap the integral term's contribution at umaxIn
+        if self.ki:
+            max_integral = self.umaxIn / self.ki
+            self.eintegral = max(-max_integral, min(max_integral, self.eintegral))
         
         # Control signal
         u = self.kp*e + self.kd*dedt + self.ki*self.eintegral
@@ -142,6 +161,12 @@ class PID:
         posi = self.M.pos
         enable_irq(state)
 
+        if not self.posInitialized:
+            self.prevPos = posi
+            self.posInitialized = True
+            sleep_ms(50)
+            return
+
         # Delta is high because small delta causes drastic speed stepping.
         deltaT = .05
 
@@ -149,8 +174,8 @@ class PID:
         vt = target 
 
         # Current encoder tick rate
-        velocity = (posi - self.posPrev)/deltaT
-        self.posPrev = posi
+        velocity = (posi - self.prevPos)/deltaT
+        self.prevPos = posi
 
         # Converted to RPM
         # 350 ticks per revolution of output shaft of the motor 
@@ -167,5 +192,3 @@ class PID:
 
         # Constant delay
         sleep_ms(50)
-
-    
